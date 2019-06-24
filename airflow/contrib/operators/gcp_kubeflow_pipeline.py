@@ -80,9 +80,8 @@ class KubeflowPipelineOperator(BaseOperator):
 
     def execute(self, context):
 
-        conf = hasattr(context, 'dag_run') and \
-               hasattr(context.dag_run, 'conf') and \
-               context.dag_run.conf \
+        conf = 'dag_run' in context and \
+               context['dag_run'].conf \
                or None
 
         def get(attr, throw=True):
@@ -93,7 +92,7 @@ class KubeflowPipelineOperator(BaseOperator):
 
             key = self.VARIABLE_KEYS[attr]
 
-            if conf and conf[key]:
+            if conf and key in conf and conf[key]:
                 return conf[key]
 
             class Sentinel:
@@ -119,10 +118,6 @@ class KubeflowPipelineOperator(BaseOperator):
 
         # We'll None-check and fall back to a name taken from the pipeline below
         experiment_name = get('experiment_name', throw=False)
-
-        now = int(datetime.datetime.utcnow().timestamp() * 100000)
-
-        job_name = self.job_name or '%s-%d' % (experiment_name, now)
 
         pipeline_package_path = None
         delete = False
@@ -183,8 +178,11 @@ class KubeflowPipelineOperator(BaseOperator):
                 self.log.info("Found experiment %s" % experiment)
 
             params = self.params
-            if params and self.params_fn:
+            if self.params_fn:
                 params = self.params_fn(params, conf)
+
+            now = int(datetime.datetime.utcnow().timestamp() * 100000)
+            job_name = self.job_name or '%s-%d' % (experiment_name, now)
 
             self.log.info('Running job %s with params: %s' % (job_name, params))
             result = client.run_pipeline(experiment.id, job_name, pipeline_package_path, params)

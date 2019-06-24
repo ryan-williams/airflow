@@ -20,13 +20,11 @@
 """Example DAG that defines a Kubeflow Pipeline and submits it to a Kubeflow cluster."""
 
 from datetime import timedelta
-import tempfile
 
 import airflow
 from airflow.models import DAG
 from airflow.operators.kubeflow_pipelines import KubeflowPipelineOperator
 
-import kfp.compiler as compiler
 import kfp.dsl as dsl
 
 
@@ -64,21 +62,12 @@ def sequential_pipeline(filename='gs://ml-pipeline-playground/shakespeare1.txt')
         arguments=['echo "%s"' % op1.outputs['newfile']]
     )
 
-# Compile the example pipeline to a temporary file and pass it to a KubeflowPipelineOperator instance
-# Let the operator cleanup the temporary file when it is finished executing
-with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as pipeline_tar_gz:
-    path = pipeline_tar_gz.name
-    compiler.Compiler().compile(sequential_pipeline, path)
-
-    KubeflowPipelineOperator(
-        pipeline=path,
-        # params={
-        #     'filename': 'gs://ml-pipeline-playground/shakespeare2.txt'  # test that params are passed through correctly
-        # },
-        params_fn=lambda params, conf: { 'filename': conf.filename },
-        task_id='kubeflow-pipeline',
-        dag=dag
-    )
+KubeflowPipelineOperator(
+    pipeline=sequential_pipeline,
+    params_fn=lambda _, conf: conf,
+    task_id='kubeflow-pipeline',
+    dag=dag
+)
 
 
 if __name__ == "__main__":
