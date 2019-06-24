@@ -76,7 +76,7 @@ class KubeflowPipelineOperator(BaseOperator):
         self.client_id = client_id
         self.experiment_name = experiment_name
         self.job_name = job_name
-        self.params_fn = params_fn or (lambda x: x)
+        self.params_fn = params_fn or (lambda params, conf: params)
 
     def execute(self, context):
 
@@ -177,9 +177,7 @@ class KubeflowPipelineOperator(BaseOperator):
                 experiment = client.get_experiment(experiment_name=experiment_name)
                 self.log.info("Found experiment %s" % experiment)
 
-            params = self.params
-            if self.params_fn:
-                params = self.params_fn(params, conf)
+            params = self.params_fn(self.params, conf)
 
             now = int(datetime.datetime.utcnow().timestamp() * 100000)
             job_name = self.job_name or '%s-%d' % (experiment_name, now)
