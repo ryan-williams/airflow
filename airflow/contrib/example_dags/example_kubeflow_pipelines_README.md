@@ -84,19 +84,24 @@ The `example_kubeflow_pipeline_operator` example DAG runs a pipeline, [`coin.tar
 
 [![Homepage showing "Trigger Dag" button](https://cl.ly/2076214826d6/[37736f19eb4baace4b90afc9b3239480]_Screen%20Shot%202019-06-24%20at%2012.31.02%20AM.png)](https://cl.ly/2076214826d6/[37736f19eb4baace4b90afc9b3239480]_Screen%20Shot%202019-06-24%20at%2012.31.02%20AM.png)
 
+### Trigger DAG
 Click "Trigger Dag" as shown, and a run will appear:
 
 [![Homepage showing a "Running" example DAG](https://cl.ly/d905250523ee/[ab427e0b67f4c49e8704b1c8e442f65a]_Screen%20Shot%202019-06-24%20at%2012.35.30%20AM.png)](https://cl.ly/d905250523ee/[ab427e0b67f4c49e8704b1c8e442f65a]_Screen%20Shot%202019-06-24%20at%2012.35.30%20AM.png)
 
+### Wait for success
 Refresh about a minute later, and you should see a "success" run in the "Recent Tasks" column:
 
 [![Homepage showing a recent success of an example DAG](https://cl.ly/7977176453c2/[ae37c5b84b66b21ac6db48393fe42b6c]_Screen%20Shot%202019-06-24%20at%2012.36.46%20AM.png)](https://cl.ly/7977176453c2/[ae37c5b84b66b21ac6db48393fe42b6c]_Screen%20Shot%202019-06-24%20at%2012.36.46%20AM.png)
 
+### Navigate to Logs
 Click on that successful run, and you'll see a table with recent successful runs of this DAG:
 
 [![Recent successful example DAG runs, with "Log Url" link annotated](https://cl.ly/2f5313b5a7a1/[b16f74f02e87e330e78e66be10dd949f]_Screen%20Shot%202019-06-24%20at%2012.39.18%20AM.png)](https://cl.ly/2f5313b5a7a1/[b16f74f02e87e330e78e66be10dd949f]_Screen%20Shot%202019-06-24%20at%2012.39.18%20AM.png)
 
 Scroll all the way on the right and click on the "Log Url":
+
+### Find Kubeflow Pipelines web UI link
 
 [![Example DAG logs page, showing URL to Kubeflow Pipelines web UI for the run](https://cl.ly/3231486ea992/[ea9c6fdf0f95ca93ff91a5c5dde196b0]_Screen%20Shot%202019-06-24%20at%2012.48.03%20AM.png)](https://cl.ly/3231486ea992/[ea9c6fdf0f95ca93ff91a5c5dde196b0]_Screen%20Shot%202019-06-24%20at%2012.48.03%20AM.png)
 
