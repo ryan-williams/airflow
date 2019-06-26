@@ -35,7 +35,7 @@ args = {
 }
 
 dag = DAG(
-    dag_id='example_kubeflow_compile_pipeline_operator',
+    dag_id='kubeflow_pipelines_sequential_example',
     default_args=args,
     schedule_interval='@once',
     dagrun_timeout=timedelta(minutes=60),

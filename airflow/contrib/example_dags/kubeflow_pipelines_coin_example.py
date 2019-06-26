@@ -33,7 +33,7 @@ args = {
 }
 
 dag = DAG(
-    dag_id='example_kubeflow_pipeline_operator',
+    dag_id='kubeflow_pipelines_coin_example',
     default_args=args,
     schedule_interval='@once',
     dagrun_timeout=timedelta(minutes=60),

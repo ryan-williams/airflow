@@ -23,6 +23,7 @@ import os
 from os import environ
 from os.path import basename
 from tempfile import NamedTemporaryFile
+from time import sleep
 from urllib.parse import urlparse
 
 from airflow.models import BaseOperator, Variable
@@ -177,15 +178,62 @@ class KubeflowPipelineOperator(BaseOperator):
                 experiment = client.get_experiment(experiment_name=experiment_name)
                 self.log.info("Found experiment %s" % experiment)
 
-            params = self.params_fn(self.params, conf)
+            params = self.params_fn(self.params, conf) or {}
 
             now = int(datetime.datetime.utcnow().timestamp() * 100000)
             job_name = self.job_name or '%s-%d' % (experiment_name, now)
 
             self.log.info('Running job %s with params: %s' % (job_name, params))
-            result = client.run_pipeline(experiment.id, job_name, pipeline_package_path, params)
-            url = '%s/#/runs/details/%s' % (host, result.id)
-            self.log.info('Ran job: run details: %s' % url)
+            run = client.run_pipeline(experiment.id, job_name, pipeline_package_path, params)
+            id = run.id
+            url = '%s/#/runs/details/%s' % (host, id)
+            self.log.info('Job running: %s' % url)
+            self.log.info('Polling job status every 1s…')
+
+            def get_intervals():
+                """Sleep-interval generator: 10x1s, 10x10s, ♾x60s"""
+                intervals = [ 1, 10, 60 ]
+                max_interval_reps = 10
+                interval = None
+                while True:
+                    if intervals:
+                        interval = intervals.pop(0)
+                        for _ in range(max_interval_reps):
+                            yield interval
+                    else:
+                        yield interval
+
+            intervals = get_intervals()
+
+            running_statuses = [ None, 'Pending', 'Running' ]
+            failed_statuses = [ 'Failed', 'Error' ]
+            success_statuses = [ 'Succeeded', 'Skipped' ]
+
+            while True:
+                run = client.get_run(id).run
+
+                if run.status not in running_statuses:
+                    break
+
+                interval = intervals.__next__()
+                self.log.info("Sleeping for %ds" % interval)
+                sleep(interval)
+
+            # Pending, Running, Succeeded, Skipped, Failed, Error
+            if run.status in failed_statuses:
+                raise ValueError(
+                    'Pipeline %s failed with state: %s (error: %s)' % (
+                        id,
+                        run.status,
+                        run.error or '???'
+                    )
+                )
+
+            if run.status not in success_statuses:
+                self.log.warn('Unrecognized status "%s": %s' % (run.status, run))
+
+            self.log.info('Pipeline %s finished in state: %s' % (id, run.status))
+
             return url
 
         finally:
