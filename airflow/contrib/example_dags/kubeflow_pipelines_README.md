@@ -38,25 +38,29 @@ gcloud projects add-iam-policy-binding "${PROJECT}" --member serviceAccount:"${S
 ```
 See [IAP docs](https://cloud.google.com/iap/docs/managing-access) for more info.
 
-## Install KFP-Airflow plugin and example DAGs
+## Configure KFP-Airflow plugin, example DAGs, and variables
 
-### Plugin (containing KubeflowPipelinesOperator)
+### Install the Kubeflow Pipelines package on the Cloud Composer server
 ```bash
-base=https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib
-wget $base/operators/gcp_kubeflow_pipeline.py
+gcloud composer environments update $ENV --update-pypi-package=kfp
+```
+
+### Fetch the operator and example DAGs
+```bash
+wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/operators/gcp_kubeflow_pipeline.py
+wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/kubeflow_pipelines_coin_example.py
+wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/kubeflow_pipelines_sequential_example.py
+```
+
+### Import them into Cloud Composer
+```bash
 gcloud composer environments storage plugins import --environment $ENV --source gcp_kubeflow_pipeline.py
+gcloud composer environments storage dags import --environment $ENV --source kubeflow_pipelines_coin_example.py
+gcloud composer environments storage dags import --environment $ENV --source kubeflow_pipelines_sequential_example.py
 ```
 
-### Example DAGs:
-```bash
-wget $base/example_dags/example_kubeflow_pipeline_dag.py
-gcloud composer environments storage dags import --environment $ENV --source example_kubeflow_pipeline_dag.py
-wget $base/example_dags/example_kubeflow_compile_pipeline_dag.py
-gcloud composer environments storage dags import --environment $ENV --source example_kubeflow_compile_pipeline_dag.py
-```
-
-## Configure Cloud Composer variables to point at an existing Kubeflow cluster
-
+### Configure Cloud Composer variables to point at an existing Kubeflow cluster
+Tell Airflow where to find a Kubeflow cluster to run Pipelines on, and how to authenticate:
 ```bash
 gcloud composer environments run $ENV variables -- --set KUBEFLOW_HOST "https://${KFAPP}.endpoints.${PROJECT}.cloud.goog/pipeline"
 gcloud composer environments run $ENV variables -- --set KUBEFLOW_OAUTH_CLIENT_ID "$IAP_OAUTH_CLIENT_ID"
@@ -73,21 +77,21 @@ gcloud composer environments describe $ENV --format="get(config.airflowUri)"
 
 ### Open in browser:
 
-[![Cloud Composer / Airflow homepage](https://cl.ly/98b52dfdf552/Screen%20Shot%202019-06-24%20at%2012.30.02%20AM.png)](https://cl.ly/98b52dfdf552/Screen%20Shot%202019-06-24%20at%2012.30.02%20AM.png)
+[![Cloud Composer / Airflow homepage](https://cl.ly/1608a97d6613/homepage1-1300x470.png)](https://cl.ly/1608a97d6613/homepage1-1300x470.png)
 
 Note the custom Kubeflow Pipelines example DAGs:
-- `example_kubeflow_compile_pipeline_operator` ([github](https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/example_kubeflow_compile_pipeline_dag.py))
-- `example_kubeflow_pipeline_operator` ([github](https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/example_kubeflow_pipeline_dag.py))
+- [`kubeflow_pipelines_coin_example`](https://github.com/ryan-williams/airflow/blob/kfp/airflow/contrib/example_dags/kubeflow_pipelines_coin_example.py#L35)
+- [`kubeflow_pipelines_sequential_example`](https://github.com/ryan-williams/airflow/blob/kfp/airflow/contrib/example_dags/kubeflow_pipelines_sequential_example.py#L37)
 
 ## Trigger a simple Kubeflow Pipeline from Cloud Composer web UI
-The `example_kubeflow_pipeline_operator` example DAG runs a pipeline, [`coin.tar.gz`](https://storage.googleapis.com/ml-pipeline-playground/coin.tar.gz), with no additional inputs, so we can trigger a run from the web UI:
+The `kubeflow_pipelines_coin_example` example DAG runs a pipeline, [`coin.tar.gz`](https://storage.googleapis.com/ml-pipeline-playground/coin.tar.gz), with no additional inputs, so we can trigger a run from the web UI:
 
-[![Homepage showing "Trigger Dag" button](https://cl.ly/2076214826d6/[37736f19eb4baace4b90afc9b3239480]_Screen%20Shot%202019-06-24%20at%2012.31.02%20AM.png)](https://cl.ly/2076214826d6/[37736f19eb4baace4b90afc9b3239480]_Screen%20Shot%202019-06-24%20at%2012.31.02%20AM.png)
+[![Homepage showing "Trigger Dag" button](https://d3vv6lp55qjaqc.cloudfront.net/items/3d150P1s0r2f3f3B093E/%5B8db82c0ef48d58f8accd6a06ec07f172%5D_homepage2-1300x470.png)](https://cl.ly/7157a74796b8)
 
 ### Trigger DAG
 Click "Trigger Dag" as shown, and a run will appear:
 
-[![Homepage showing a "Running" example DAG](https://cl.ly/d905250523ee/[ab427e0b67f4c49e8704b1c8e442f65a]_Screen%20Shot%202019-06-24%20at%2012.35.30%20AM.png)](https://cl.ly/d905250523ee/[ab427e0b67f4c49e8704b1c8e442f65a]_Screen%20Shot%202019-06-24%20at%2012.35.30%20AM.png)
+[![Homepage showing a "Running" example DAG](https://cl.ly/c632e7e362e6/[7cfb5f2d83145e5b5263d2f255f0a59d]_running-1300x530.png)](https://cl.ly/c632e7e362e6)
 
 ### Wait for success
 Refresh about a minute later, and you should see a "success" run in the "Recent Tasks" column:
@@ -113,7 +117,7 @@ We see the Kubeflow Pipelines DAG, input/output, logs, etc.! 🎉
 
 ## Trigger an example DAG from the command-line
 
-The [`example_kubeflow_compile_pipeline_operator`](https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/example_kubeflow_compile_pipeline_dag.py) DAG defines a Kubeflow Pipeline using the `@dsl.pipeline` annotation:
+The [`kubeflow_pipelines_sequential_example`](https://github.com/ryan-williams/airflow/blob/kfp/airflow/contrib/example_dags/kubeflow_pipelines_sequential_example.py#L37) DAG defines a Kubeflow Pipeline using the `@dsl.pipeline` annotation:
 
 ```python
 @dsl.pipeline(
@@ -148,10 +152,12 @@ KubeflowPipelineOperator(
 )
 ```
 
-`params` are Airflow parameters, which can be set on the DAG or operator constructor calls. Here they're both empty, as we will pass in the pipeline's required input `filename` using the DAG-run configuration CLI flag:
+The `params_fn` argument specifies that any "DAG run" configs will be passed to the Kubeflow Pipeline, allowing us to pass the pipeline's required input `filename` via the CLI when running with the `trigger_dag` command:
 
 ```bash
-gcloud composer environments run $ENV trigger_dag -- example_kubeflow_compile_pipeline_operator -c '{"filename":"gs://ml-pipeline-playground/trainconfbin.json"}'
+gcloud composer environments run $ENV trigger_dag -- \
+    example_kubeflow_compile_pipeline_operator \
+    -c '{"filename":"gs://ml-pipeline-playground/trainconfbin.json"}'
 ```
 
 Again, we see a "running" entry in the "Recent Tasks" column, this time for the `example_kubeflow_compile_pipeline_operator` row:
