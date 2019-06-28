@@ -77,7 +77,7 @@ gcloud composer environments describe $ENV --format="get(config.airflowUri)"
 
 ### Open in browser:
 
-[![Cloud Composer / Airflow homepage](https://cl.ly/1608a97d6613/homepage1-1300x470.png)](https://cl.ly/1608a97d6613/homepage1-1300x470.png)
+[![Cloud Composer / Airflow homepage](https://cl.ly/9d1dac4d441e/homepage.png)](https://cl.ly/9d1dac4d441e/homepage.png)
 
 Note the custom Kubeflow Pipelines example DAGs:
 - [`kubeflow_pipelines_coin_example`](https://github.com/ryan-williams/airflow/blob/kfp/airflow/contrib/example_dags/kubeflow_pipelines_coin_example.py#L35)
@@ -86,32 +86,32 @@ Note the custom Kubeflow Pipelines example DAGs:
 ## Trigger a simple Kubeflow Pipeline from Cloud Composer web UI
 The `kubeflow_pipelines_coin_example` example DAG runs a pipeline, [`coin.tar.gz`](https://storage.googleapis.com/ml-pipeline-playground/coin.tar.gz), with no additional inputs, so we can trigger a run from the web UI:
 
-[![Homepage showing "Trigger Dag" button](https://d3vv6lp55qjaqc.cloudfront.net/items/3d150P1s0r2f3f3B093E/%5B8db82c0ef48d58f8accd6a06ec07f172%5D_homepage2-1300x470.png)](https://cl.ly/7157a74796b8)
+[![Homepage showing "Trigger Dag" button](https://cl.ly/c231f1ea5c7c/trigger.png)](https://cl.ly/c231f1ea5c7c/trigger.png)
 
 ### Trigger DAG
 Click "Trigger Dag" as shown, and a run will appear:
 
-[![Homepage showing a "Running" example DAG](https://cl.ly/c632e7e362e6/[7cfb5f2d83145e5b5263d2f255f0a59d]_running-1300x530.png)](https://cl.ly/c632e7e362e6)
+[![Homepage showing a "Running" example DAG](https://cl.ly/5226df43265e/running.png)](https://cl.ly/5226df43265e/running.png)
 
 ### Wait for success
 Refresh about a minute later, and you should see a "success" run in the "Recent Tasks" column:
 
-[![Homepage showing a recent success of an example DAG](https://cl.ly/7977176453c2/[ae37c5b84b66b21ac6db48393fe42b6c]_Screen%20Shot%202019-06-24%20at%2012.36.46%20AM.png)](https://cl.ly/7977176453c2/[ae37c5b84b66b21ac6db48393fe42b6c]_Screen%20Shot%202019-06-24%20at%2012.36.46%20AM.png)
+[![Homepage showing a recent success of an example DAG](https://cl.ly/99a494f18ef3/succeeded.png)](https://cl.ly/99a494f18ef3/succeeded.png)
 
 ### Navigate to Logs
 Click on that successful run, and you'll see a table with recent successful runs of this DAG:
 
-[![Recent successful example DAG runs, with "Log Url" link annotated](https://cl.ly/2f5313b5a7a1/[b16f74f02e87e330e78e66be10dd949f]_Screen%20Shot%202019-06-24%20at%2012.39.18%20AM.png)](https://cl.ly/2f5313b5a7a1/[b16f74f02e87e330e78e66be10dd949f]_Screen%20Shot%202019-06-24%20at%2012.39.18%20AM.png)
+[![Recent successful example DAG runs, with "Log Url" link annotated](https://cl.ly/5f4360f11b4a/successes.png)](https://cl.ly/5f4360f11b4a/successes.png)
 
 Scroll all the way on the right and click on the "Log Url":
 
 ### Find Kubeflow Pipelines web UI link
 
-[![Example DAG logs page, showing URL to Kubeflow Pipelines web UI for the run](https://cl.ly/3231486ea992/[ea9c6fdf0f95ca93ff91a5c5dde196b0]_Screen%20Shot%202019-06-24%20at%2012.48.03%20AM.png)](https://cl.ly/3231486ea992/[ea9c6fdf0f95ca93ff91a5c5dde196b0]_Screen%20Shot%202019-06-24%20at%2012.48.03%20AM.png)
+[![Example DAG logs page, showing URL to Kubeflow Pipelines web UI for the run](https://cl.ly/ece649dbbfe2/logs.png)](https://cl.ly/ece649dbbfe2/logs.png)
 
 Some basic logs about the execution are here; in particular, the last line gives a link to the Kubeflow Pipelines web UI's "run details" page for the pipeline that was run as part of this Airflow DAG. Copying and navigating to that link:
 
-[![Kubeflow Pipelines web UI](https://cl.ly/647fccec88d1/Screen%20Shot%202019-06-24%20at%2012.51.20%20AM.png)](https://cl.ly/647fccec88d1/Screen%20Shot%202019-06-24%20at%2012.51.20%20AM.png)
+[![Kubeflow Pipelines web UI](https://cl.ly/3fe326f2ea30/kfp.png)](https://cl.ly/3fe326f2ea30/kfp.png)
 
 We see the Kubeflow Pipelines DAG, input/output, logs, etc.! 🎉
 
@@ -156,16 +156,16 @@ The `params_fn` argument specifies that any "DAG run" configs will be passed to 
 
 ```bash
 gcloud composer environments run $ENV trigger_dag -- \
-    example_kubeflow_compile_pipeline_operator \
+    kubeflow_pipelines_sequential_example \
     -c '{"filename":"gs://ml-pipeline-playground/trainconfbin.json"}'
 ```
 
-Again, we see a "running" entry in the "Recent Tasks" column, this time for the `example_kubeflow_compile_pipeline_operator` row:
+Again, we see a "running" entry in the "Recent Tasks" column, this time for the `kubeflow_pipelines_sequential_example` row:
 
-[![Homepage showing the example_kubeflow_compile_pipeline_operator example DAG running](https://cl.ly/80e8f94bb860/[cc0d5d273ca578e25c1db41512ed4551]_Screen%20Shot%202019-06-24%20at%201.11.41%20AM.png)](https://cl.ly/80e8f94bb860/[cc0d5d273ca578e25c1db41512ed4551]_Screen%20Shot%202019-06-24%20at%201.11.41%20AM.png)
+[![Homepage showing the kubeflow_pipelines_sequential_example DAG running](https://cl.ly/3f37be1bea45/running.png)](https://cl.ly/3f37be1bea45/running.png)
 
 Refreshing a few times, you should see it succeed. Clicking on the "success" counter, and then the "Log Url", you'll see the Kubeflow Pipelines link again:
 
-[![Kubeflow Pipelines web UI showing completed task and output](https://cl.ly/f0730407a4b8/[d557909bb82e8493de2bd77d22b4ffde]_Screen%20Shot%202019-06-24%20at%201.14.41%20AM.png)](https://cl.ly/f0730407a4b8/[d557909bb82e8493de2bd77d22b4ffde]_Screen%20Shot%202019-06-24%20at%201.14.41%20AM.png)
+[![Kubeflow Pipelines web UI showing completed task and output](https://cl.ly/59fc045f9566/kfp.png)](https://cl.ly/59fc045f9566/kfp.png[d557909bb82e8493de2bd77d22b4ffde]_Screen%20Shot%202019-06-24%20at%201.14.41%20AM.png)
 
 The output path is indeed the one that we passed as input on the CLI, `gs://ml-pipeline-playground/trainconfbin.json` 🎉.
