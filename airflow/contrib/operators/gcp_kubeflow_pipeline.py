@@ -123,6 +123,16 @@ class KubeflowPipelineOperator(BaseOperator):
         pipeline_package_path = None
         delete = False
 
+        def kfp_req(fn, retries=3):
+            try:
+                return fn()
+            except ApiException as e:
+                if type(e.body) == str and e.body.startswith('upstream connect error') and retries > 0:
+                    self.log.warn("Caught apparent Kubeflow server flakiness; retrying %dx" % retries)
+                    return kfp_req(fn, retries - 1)
+                else:
+                    raise e
+
         try:
             # The provided pipeline can be a function (requiring compilation) or a string (URL):
 
@@ -171,12 +181,15 @@ class KubeflowPipelineOperator(BaseOperator):
             # Create the Kubeflow Pipelines experiment
             try:
                 self.log.info("Attempting to create KFP experiment %s" % experiment_name)
-                experiment = client.create_experiment(name=experiment_name)
-            except ApiException:
-                # If an experiment already exists, fetch it
-                self.log.info("Caught ApiException; checking whether experiment %s already exists" % experiment_name)
-                experiment = client.get_experiment(experiment_name=experiment_name)
-                self.log.info("Found experiment %s" % experiment)
+                experiment = kfp_req(lambda : client.create_experiment(name=experiment_name))
+            except ApiException as e:
+                if e.body['error'].startswith('Create experiment failed'):
+                    # If an experiment already exists, fetch it
+                    self.log.info("Caught ApiException; checking whether experiment %s already exists" % experiment_name)
+                    experiment = kfp_req(lambda : client.get_experiment(experiment_name=experiment_name))
+                    self.log.info("Found experiment %s" % experiment)
+                else:
+                    raise e
 
             params = self.params_fn(self.params, conf) or {}
 
@@ -184,7 +197,7 @@ class KubeflowPipelineOperator(BaseOperator):
             job_name = self.job_name or '%s-%d' % (experiment_name, now)
 
             self.log.info('Running job %s with params: %s' % (job_name, params))
-            run = client.run_pipeline(experiment.id, job_name, pipeline_package_path, params)
+            run = kfp_req(lambda : client.run_pipeline(experiment.id, job_name, pipeline_package_path, params))
             id = run.id
             url = '%s/#/runs/details/%s' % (host, id)
             self.log.info('Job running: %s' % url)
@@ -210,7 +223,7 @@ class KubeflowPipelineOperator(BaseOperator):
             success_statuses = [ 'Succeeded', 'Skipped' ]
 
             while True:
-                run = client.get_run(id).run
+                run = kfp_req(lambda : client.get_run(id).run)
 
                 if run.status not in running_statuses:
                     break
