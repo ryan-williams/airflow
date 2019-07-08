@@ -1002,7 +1002,7 @@ class Airflow(BaseView):
             if not xcom.key.startswith('_'):
                 attributes.append((xcom.key, xcom.value))
 
-        title = "XCom"
+        title = "XComz"
         return self.render(
             'airflow/xcom.html',
             attributes=attributes,
