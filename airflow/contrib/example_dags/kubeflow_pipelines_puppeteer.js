@@ -13,7 +13,7 @@ const browser = await puppeteer.launch({
   args: [
     '--no-sandbox',
   ],
-  userDataDir: '/Users/ryan/c/airflow/profile',
+  userDataDir: process.env("USER_DATA_DIR"),
 });
 const page = await browser.newPage();
 

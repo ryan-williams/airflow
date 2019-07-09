@@ -1,12 +1,16 @@
-{% extends "admin/model/list.html" %}
+{% extends "airflow/model_list.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link
+    href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.css"
+    rel="stylesheet" type='text/css'>
+{% endblock %}
 
 {% macro render_kfp_link(model, column) %}
-  <a href="{{ model.value }}">{{ model.value }}</a>
+  <a href="{{ model.value }}"><i title="Link to Kubeflow Pipelines Web UI for this job" class="fa fa-external-link"></i></a>
 {% endmacro %}
 
 {% macro render_task_instance_link(model, column) %}
   <a href="/admin/airflow/task?dag_id={{ model.dag_id|urlencode }}&task_id={{ model.task_id|urlencode }}&execution_date={{ model.execution_date|urlencode }}">{{ model.execution_date }}</a>
 {% endmacro %}
-
-{# http://localhost:8080/admin/airflow/task?dag_id=kubeflow_pipelines_coin_example&task_id=kubeflow-pipeline&execution_date=2019-07-03T05%3A43%3A02.193643%2B00%3A00 #}
-{# http://localhost:8080/admin/airflow/task?dag_id=kubeflow_pipelines_coin_example&task_id=kubeflow-pipeline&execution_date=2019-07-03%2005:39:25.412072+00:00 #}

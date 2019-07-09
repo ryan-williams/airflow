@@ -63,6 +63,9 @@ class KubeflowPipelineOperator(BaseOperator):
         'experiment_name': 'KUBEFLOW_EXPERIMENT'
     }
 
+    # Task instances will write a link to their corresponding Kubeflow Pipeline web UI in this XCom key.
+    KUBEFLOW_PIPELINES_LINK_XCOM_KEY = 'kubeflow_pipeline_job'
+
     def __init__(self,
                  pipeline,
                  host=None,
@@ -247,7 +250,7 @@ class KubeflowPipelineOperator(BaseOperator):
 
             self.log.info('Pipeline %s finished in state: %s' % (id, run.status))
 
-            self.xcom_push(context, key='kubeflow_pipeline_job', value=url)
+            self.xcom_push(context, key=self.KUBEFLOW_PIPELINES_LINK_XCOM_KEY, value=url)
 
         finally:
             if delete:
@@ -261,11 +264,10 @@ from airflow.settings import Session
 
 
 # Creating a flask blueprint to integrate the templates and static folder
-bp = Blueprint(
+blueprint = Blueprint(
     "kfp_plugin", __name__,
-    template_folder='templates',  # registers airflow/plugins/templates as a Jinja template folder
-    static_folder='static',
-    static_url_path='/static/kfp_plugin')
+    template_folder='templates',  # register airflow/plugins/templates as a Jinja template folder
+)
 
 
 from flask_admin.contrib.sqla import ModelView
@@ -275,18 +277,11 @@ from airflow.www import utils as wwwutils
 PAGE_SIZE = conf.getint('webserver', 'page_size')
 
 
-class AirflowModelView(ModelView):
-    """Copied from airflow.www.views; importing that file has side-effects that crash at plugin-loading time"""
-    list_template = 'airflow/model_list.html'
-    edit_template = 'airflow/model_edit.html'
-    create_template = 'airflow/model_create.html'
-    column_display_actions = True
-    page_size = PAGE_SIZE
-
-
-class KubeflowPipelineJobView(wwwutils.SuperUserMixin, AirflowModelView):
+class KubeflowPipelineJobView(wwwutils.SuperUserMixin, ModelView):
     verbose_name = "Kubeflow Pipeline Job"
     verbose_name_plural = "Kubeflow Pipeline Jobs"
+
+    page_size = PAGE_SIZE
 
     create_template = None
     edit_template = None
@@ -294,33 +289,17 @@ class KubeflowPipelineJobView(wwwutils.SuperUserMixin, AirflowModelView):
     list_template = 'kfp_plugin/list.html'
 
     column_display_actions = False
-    # column_filters = (FilterEqual(XCom.get_many, name='xcom.key'),)
     can_edit = False
     can_create = False
     can_delete = False
 
+    column_labels = dict(value='Kubeflow Pipelines Web UI Link')
+
     # Database-related API
     def get_query(self):
-        """
-            Return a query for the model type.
-
-            This method can be used to set a "persistent filter" on an index_view.
-
-            Example::
-
-                class MyView(ModelView):
-                    def get_query(self):
-                        return super(MyView, self).get_query().filter(User.username == current_user.username)
-
-
-            If you override this method, don't forget to also override `get_count_query`, for displaying the correct
-            item count in the list view, and `get_one`, which is used when retrieving records for the edit view.
-        """
         return self.session.query(self.model).filter(XCom.key == 'kubeflow_pipeline_job')
 
-
     column_list = (
-        # 'key',
         'execution_date',
         'dag_id',
         'task_id',
@@ -342,12 +321,12 @@ class KubeflowPipelineJobView(wwwutils.SuperUserMixin, AirflowModelView):
         return 'kfp'
 
 
-xv = KubeflowPipelineJobView(models.XCom, Session, name="Kubeflow Pipelines", category=None)
+view = KubeflowPipelineJobView(models.XCom, Session, name="Kubeflow Pipelines", category='Browse')
 
 
 class KubeflowPipelinesPlugin(AirflowPlugin):
-    """Add `KubeflowPipelineOperator` to a running Airflow instance."""
+    """Add Kubeflow Pipelines operator and admin view to Airflow"""
     name = 'kubeflow_pipelines'
     operators = [ KubeflowPipelineOperator ]
-    admin_views = [ xv ]
-    flask_blueprints = [ bp ]
+    admin_views = [ view ]
+    flask_blueprints = [ blueprint ]
