@@ -1,14 +1,12 @@
 {% extends "airflow/model_list.html" %}
 
-{% block head %}
-  {{ super() }}
-  <link
-    href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.css"
-    rel="stylesheet" type='text/css'>
-{% endblock %}
-
 {% macro render_kfp_link(model, column) %}
-  <a href="{{ model.value }}"><i title="Link to Kubeflow Pipelines Web UI for this job" class="fa fa-external-link"></i></a>
+  <a href="{{ model.value }}">
+    <span
+      class="glyphicon glyphicon-new-window"
+      title="Link to Kubeflow Pipelines Web UI for this job"
+    ></span>
+  </a>
 {% endmacro %}
 
 {% macro render_task_instance_link(model, column) %}
