@@ -31,7 +31,7 @@ async function screenshot(name) {
   idx += 1;
   await page.screenshot({path: dir + '/' + (('0' + idx).slice(-2)) + '-' + name + '.png'});
   log("screenshotted:", name);
-  //await wait(1);
+  await wait(1);
 }
 
 async function resize() {
@@ -61,7 +61,7 @@ async function resize() {
 }
 
 let statusIdxs = {};
-[ 'success', 'running', 'failed', 'upstream_failed', 'skipped', 'up_for_retry', 'up_for_reschedule', 'queued', '', 'scheduled' ].forEach(
+[ 'success', 'running', 'failed', 'upstream_failed', 'skipped', 'up_for_retry', 'up_for_reschedule', 'queued', 'null', 'scheduled' ].forEach(
   (label, idx) => statusIdxs[label] = idx + 1
 );
 console.log(statusIdxs);
@@ -134,7 +134,7 @@ async function drawArrow(pos, degrees, pad) {
   degrees = 135 - degrees;
   pad = pad || { x: 0, y: 0 };
   const w = 100, h = 100;
-  return await page.evaluate(([pos, w, h, degrees, pad, ARROW_URL]) => {
+  await page.evaluate(([pos, w, h, degrees, pad, ARROW_URL]) => {
     var img = document.createElement('img');
     img.src = ARROW_URL;
     img.width = "100";
@@ -152,8 +152,24 @@ async function drawArrow(pos, degrees, pad) {
       Object.keys(box).reduce((o, k) => { o[k] = box[k] + 'px'; return o; }, {} )
     );
     document.body.appendChild(img);
+
+    if (!window.arrows) {
+      window.arrows = [];
+    }
+    window.arrows.push(img);
+
     return img;
   }, [pos, w, h, degrees, pad, ARROW_URL]);
+  // arrows.push(arrow);
+  // return arrow;
+}
+
+async function clearArrows() {
+  await page.evaluate(() => {
+    console.log("trying to remove arrows:", window.arrows);
+    window.arrows.forEach((a) => window.document.body.removeChild(a));
+    window.arrows = [];
+  });
 }
 
 async function home() {
@@ -221,6 +237,7 @@ async function waitForSuccessCircle(row) {
       [
         'running',
         'queued',
+        'null',
         'scheduled',
       ]
       .map(async s => await statusCount(row, s))
@@ -263,21 +280,15 @@ async function clickLogs(name) {
 }
 
 async function logsPage() {
-  // await wait(2);
-  // await page.evaluate(async () => {
-  //   console.log("scroll to:", document.body.scrollHeight);
-  //   window.scrollTo(0, document.body.scrollHeight);
-  // });
-  // await wait(1);
   await drawArrow({ bottom: -10, left: 1070, position: "fixed" },  90);
-  await drawArrow({ bottom: 200, left: 1200, position: "fixed" }, 270);
+  await drawArrow({ bottom: 190, left: 1200, position: "fixed" }, 270);
   await wait(1);
   await page.evaluate(async () => {
     console.log("scroll to:", document.body.scrollHeight);
     window.scrollTo(0, document.body.scrollHeight);
   });
   await wait(1);
-  screenshot("logs-page");
+  await screenshot("logs-page");
 }
 
 async function jobUrl() {
@@ -323,13 +334,15 @@ async function runDetails() {
   await screenshot('kfp');
 }
 
-async function homeToKFP() {
-  const dropdown = '#admin-navbar-collapse > .navbar-nav > li:nth-child(3)'
+async function kfpMenu() {
+  await clearArrows();
+  const dropdown = '#admin-navbar-collapse > .navbar-nav > li:nth-child(3)';
   await page.click(dropdown + ' > a');
   log("clicked 'Browse' menu");
   await wait(1);
 
   const kfp = dropdown + ' > ul > li:last-child > a';
+  await arrow(kfp, -30, { x: -50, y: -70 });
   await page.hover(kfp);
   await screenshot('kfp-menu');
 
@@ -339,10 +352,13 @@ async function homeToKFP() {
 
 async function kfpPage(load) {
   if (load) {
-    await goto('/admin/kfp/');
+    await goto(AIRFLOW_HOST + '/admin/kfp/');
   }
+  const link = 'tr:first-child > td.col-value > a';
+  await arrow(link, 150);
+  await wait(.5);
   await screenshot('kfp-page');
-  await page.click('tr:first-child > td.col-value > a');
+  await page.click(link);
   await wait(1);
 }
 
@@ -422,25 +438,31 @@ async function sequentialKFPJob() {
 }
 
 
-await home();
 // const dagRowIdx = await findDagRowIdx('kubeflow_pipelines_coin_example') + 1;
 // const row = '#dags tr:nth-child(' + dagRowIdx + ')';
 // await hoverClickTrigger(row);
 
-// let row = await runCoin();
-// await clickSuccessCircle(row);
-await clickLogs('kubeflow_pipelines_coin_example');
+// await arrow('table');
+// await clearArrows();
+
+await home();
+let row = await runCoin();
+await clickSuccessCircle(row);
+//await clickLogs('kubeflow_pipelines_coin_example');
+await clickLogs();
 await logsPage();
 
-// await runCoin();
 //runDetails();
 
-// await homeToKFP();
-// await kfpPage();
-// await kfpJobPage();
+await kfpMenu();
+await kfpPage();
+width = 850; height = 600;
+await resize();
+await screenshot('kfp-coin');
+//await kfpJobPage();
 
 // await sequentialDetails();
 // await sequentialKFPJob();
 
-//await browser.close();
+await browser.close();
 })();
