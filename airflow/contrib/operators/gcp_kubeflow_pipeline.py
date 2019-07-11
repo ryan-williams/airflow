@@ -286,7 +286,7 @@ class KubeflowPipelineJobView(wwwutils.SuperUserMixin, ModelView):
     create_template = None
     edit_template = None
 
-    list_template = 'kfp_plugin/list.html'
+    list_template = 'kfp_plugin/kubeflow_pipelines_list.html'
 
     column_display_actions = False
     can_edit = False
@@ -297,7 +297,7 @@ class KubeflowPipelineJobView(wwwutils.SuperUserMixin, ModelView):
 
     # Database-related API
     def get_query(self):
-        return self.session.query(self.model).filter(XCom.key == 'kubeflow_pipeline_job')
+        return self.session.query(self.model).filter(XCom.key == 'kubeflow_pipeline_job').order_by(XCom.execution_date.desc())
 
     column_list = (
         'execution_date',

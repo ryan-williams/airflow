@@ -45,9 +45,10 @@ See [IAP docs](https://cloud.google.com/iap/docs/managing-access) for more info.
 gcloud composer environments update $ENV --update-pypi-package=kfp
 ```
 
-### Fetch the operator and example DAGs
+### Fetch the operator, example DAGs, and HTML template
 ```bash
 wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/operators/gcp_kubeflow_pipeline.py
+wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/views/kubeflow_pipelines_list.html
 wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/kubeflow_pipelines_coin_example.py
 wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib/example_dags/kubeflow_pipelines_sequential_example.py
 ```
@@ -57,6 +58,9 @@ wget https://raw.githubusercontent.com/ryan-williams/airflow/kfp/airflow/contrib
 gcloud composer environments storage plugins import --environment $ENV --source gcp_kubeflow_pipeline.py
 gcloud composer environments storage dags import --environment $ENV --source kubeflow_pipelines_coin_example.py
 gcloud composer environments storage dags import --environment $ENV --source kubeflow_pipelines_sequential_example.py
+
+BUCKET="$(dirname "$(gcloud composer environments describe $ENV --format="get(config.dagGcsPrefix)")")"
+gsutil cp kubeflow_pipelines_list.html "$BUCKET/plugins/templates/kfp_plugin/"
 ```
 
 ### Configure Cloud Composer variables to point at an existing Kubeflow cluster
@@ -77,7 +81,7 @@ gcloud composer environments describe $ENV --format="get(config.airflowUri)"
 
 ### Open in browser:
 
-[![Cloud Composer / Airflow homepage](https://cl.ly/9d1dac4d441e/homepage.png)](https://cl.ly/9d1dac4d441e/homepage.png)
+[![Cloud Composer / Airflow homepage][homepage]][homepage]
 
 Note the custom Kubeflow Pipelines example DAGs:
 - [`kubeflow_pipelines_coin_example`](https://github.com/ryan-williams/airflow/blob/kfp/airflow/contrib/example_dags/kubeflow_pipelines_coin_example.py#L35)
@@ -86,32 +90,41 @@ Note the custom Kubeflow Pipelines example DAGs:
 ## Trigger a simple Kubeflow Pipeline from Cloud Composer web UI
 The `kubeflow_pipelines_coin_example` example DAG runs a pipeline, [`coin.tar.gz`](https://storage.googleapis.com/ml-pipeline-playground/coin.tar.gz), with no additional inputs, so we can trigger a run from the web UI:
 
-[![Homepage showing "Trigger Dag" button](https://cl.ly/c231f1ea5c7c/trigger.png)](https://cl.ly/c231f1ea5c7c/trigger.png)
+[![Homepage showing "Trigger Dag" button][trigger]][trigger]
 
 ### Trigger DAG
 Click "Trigger Dag" as shown, and a run will appear:
 
-[![Homepage showing a "Running" example DAG](https://cl.ly/5226df43265e/running.png)](https://cl.ly/5226df43265e/running.png)
+[![Homepage showing a "Running" example DAG][running]][running]
 
 ### Wait for success
 Refresh about a minute later, and you should see a "success" run in the "Recent Tasks" column:
 
-[![Homepage showing a recent success of an example DAG](https://cl.ly/99a494f18ef3/succeeded.png)](https://cl.ly/99a494f18ef3/succeeded.png)
+[![Homepage showing a recent success of an example DAG][succeeded]][succeeded]
 
 ### Navigate to Logs
 Click on that successful run, and you'll see a table with recent successful runs of this DAG:
 
-[![Recent successful example DAG runs, with "Log Url" link annotated](https://cl.ly/5f4360f11b4a/successes.png)](https://cl.ly/5f4360f11b4a/successes.png)
+[![Recent successful example DAG runs, with "Log Url" link annotated][logs-link]][logs-link]
 
-Scroll all the way on the right and click on the "Log Url":
+Scroll all the way to the right and click on the "Log Url":
 
-### Find Kubeflow Pipelines web UI link
+[![Example DAG logs page, showing exit status and URL to Kubeflow Pipelines web UI for the run][logs-page]][logs-page]
 
-[![Example DAG logs page, showing URL to Kubeflow Pipelines web UI for the run](https://cl.ly/ece649dbbfe2/logs.png)](https://cl.ly/ece649dbbfe2/logs.png)
+Here you can see useful debugging info as well as a link to the Kubeflow Pipelines web UI's "run details" page for the pipeline that was run as part of this Airflow DAG.
 
-Some basic logs about the execution are here; in particular, the last line gives a link to the Kubeflow Pipelines web UI's "run details" page for the pipeline that was run as part of this Airflow DAG. Copying and navigating to that link:
+### Kubeflow Pipelines menu link
+An easier way to navigate to Kubeflow Pipelines' corresponding web UI for this job is via the "Kubeflow Pipelines" link in the "Browse" menu:
 
-[![Kubeflow Pipelines web UI](https://cl.ly/3fe326f2ea30/kfp.png)](https://cl.ly/3fe326f2ea30/kfp.png)
+[![Same example DAG logs page, this time showing the Kubeflow Pipelines menu link][kfp-menu]][kfp-menu]
+
+Clicking it takes us to a page showing all Airflow tasks that run Kubeflow Pipelines:
+
+[!["Kubeflow Pipelines" page in the Airflow web UI][kfp-page]][kfp-page]
+
+This page links to the Airflow task executions (the "Execution Date" column) as well as to the Kubeflow Pipelines web UI (rightmost column):
+
+[![Kubeflow Pipelines web UI][kfp-coin]][kfp-coin]
 
 We see the Kubeflow Pipelines DAG, input/output, logs, etc.! 🎉
 
@@ -169,3 +182,13 @@ Refreshing a few times, you should see it succeed. Clicking on the "success" cou
 [![Kubeflow Pipelines web UI showing completed task and output](https://cl.ly/59fc045f9566/kfp.png)](https://cl.ly/59fc045f9566/kfp.png[d557909bb82e8493de2bd77d22b4ffde]_Screen%20Shot%202019-06-24%20at%201.14.41%20AM.png)
 
 The output path is indeed the one that we passed as input on the CLI, `gs://ml-pipeline-playground/trainconfbin.json` 🎉.
+
+[homepage]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/01-homepage.png
+[trigger]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/02-trigger.png
+[running]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/03-running.png
+[succeeded]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/04-succeeded.png
+[logs-link]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/05-logs-link.png
+[logs-page]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/06-logs-page.png
+[kfp-menu]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/07-kfp-menu.png
+[kfp-page]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/08-kfp-page.png
+[kfp-coin]: https://gist.githubusercontent.com/ryan-williams/cd8dee399a320f2e2dc9c0d2619ab4f3/raw/a4c37848a5b33801022da48133cf029ffcee7475/09-kfp-coin.png

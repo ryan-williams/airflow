@@ -17,7 +17,7 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 
-let width = 1500, height = 600;
+let width = 1500, height = 470;
 
 async function wait(s) {
   console.log("sleep " + s + "s");
@@ -35,6 +35,7 @@ async function screenshot(name) {
 }
 
 async function resize() {
+  console.log("resize to:", width, height);
   await page.setViewport({height, width});
 
   // Window frame - probably OS and WM dependent.
@@ -113,7 +114,7 @@ async function pos(selector) {
   }, selector);
 }
 
-async function arrow(selector, degrees, adjustPad) {
+async function arrow(selector, degrees, adjustPad, parent) {
   const [ offset, size ] = await pos(selector);
   console.log("offset:", offset, "size:", size);
   const { top, left } = offset;
@@ -122,19 +123,39 @@ async function arrow(selector, degrees, adjustPad) {
     top: top + h / 2,
     left: left + w / 2
   };
-  const pad = Math.sqrt((w*w + h*h) / 2);
-  adjustPad = adjustPad || { x: 0, y: 0 }
-  return drawArrow(center, degrees, { x: pad + adjustPad.x, y: pad + adjustPad.y });
+  const theta = Math.atan(h / w);
+  const radians = (degrees % 360) * Math.PI / 180;
+  let pad = {};
+  const sin = Math.sin(radians);
+  const cos = Math.cos(radians);
+  const tan = sin / cos;
+  if (-theta <= radians && radians < theta) {
+    pad = { x: w/2, y: w/2 * tan };
+  } else
+  if ( theta <= radians && radians < Math.PI - theta) {
+    pad = { x: h/2 / tan, y: h/2 };
+  } else
+  if (Math.PI - theta <= radians && radians < Math.PI + theta) {
+    pad = { x: -w/2, y: -w/2 * tan };
+  } else {
+    pad = { x: -h/2 / tan, y: -h/2 };
+  }
+  console.log("box:", w, h, "pad:", pad.x, -pad.y);
+  adjustPad = adjustPad || {};
+  adjustPad.x = adjustPad.x || 0;
+  adjustPad.y = adjustPad.y || 0;
+  return drawArrow(center, degrees, { x: pad.x + adjustPad.x, y: -pad.y + adjustPad.y }, parent);
 }
 
 const ARROW_URL = "https://cl.ly/c1865a257057/600px-Red_arrow_southeast.svg.png";
-async function drawArrow(pos, degrees, pad) {
+async function drawArrow(pos, degrees, pad, parent) {
   degrees = degrees || 0;
   console.log("drawing arrow: ", pos, degrees, pad);
   degrees = 135 - degrees;
   pad = pad || { x: 0, y: 0 };
   const w = 100, h = 100;
-  await page.evaluate(([pos, w, h, degrees, pad, ARROW_URL]) => {
+  await page.evaluate(([pos, w, h, degrees, pad, parent, ARROW_URL]) => {
+    parent = $(parent || 'body')[0];
     var img = document.createElement('img');
     img.src = ARROW_URL;
     img.width = "100";
@@ -146,29 +167,27 @@ async function drawArrow(pos, degrees, pad) {
       {
         position: "absolute",
         "z-index": 1000,
-        "transform": "translate(" + (-w/2) + "px," + (-h/2) + "px) rotate(" + degrees + "deg) translate(" + (-w/2 - pad.x) + "px," + (-h/2 - pad.y) + "px)",
+        "transform": "translate(" + (-w/2 + pad.x) + "px," + (-h/2 + pad.y) + "px) rotate(" + degrees + "deg) translate(" + (-w/2) + "px," + (-h/2) + "px)",
       },
       rest,
       Object.keys(box).reduce((o, k) => { o[k] = box[k] + 'px'; return o; }, {} )
     );
-    document.body.appendChild(img);
+    parent.appendChild(img);
 
     if (!window.arrows) {
-      window.arrows = [];
+      arrows = [];
     }
-    window.arrows.push(img);
+    arrows.push(img);
 
     return img;
-  }, [pos, w, h, degrees, pad, ARROW_URL]);
-  // arrows.push(arrow);
-  // return arrow;
+  }, [pos, w, h, degrees, pad, parent, ARROW_URL]);
 }
 
 async function clearArrows() {
   await page.evaluate(() => {
-    console.log("trying to remove arrows:", window.arrows);
-    window.arrows.forEach((a) => window.document.body.removeChild(a));
-    window.arrows = [];
+    console.log("trying to remove arrows:", arrows);
+    arrows.forEach((a) => a.parentNode.removeChild(a));
+    arrows = [];
   });
 }
 
@@ -218,7 +237,7 @@ async function hoverRunning(row) {
   await page.hover(selector);
   log("hover circle");
   await wait(.5);
-  await arrow(selector, 90);
+  await arrow(selector, -90);
   const [ { top, left }, { w, h } ] = await pos('.alert.alert-info');
   await drawArrow( { top: top + h, left: 200 }, -90);
   await wait(.5);
@@ -280,14 +299,43 @@ async function clickLogs(name) {
 }
 
 async function logsPage() {
-  await drawArrow({ bottom: -10, left: 1070, position: "fixed" },  90);
-  await drawArrow({ bottom: 190, left: 1200, position: "fixed" }, 270);
-  await wait(1);
-  await page.evaluate(async () => {
-    console.log("scroll to:", document.body.scrollHeight);
-    window.scrollTo(0, document.body.scrollHeight);
+  await wait(1.5);
+  await page.evaluate(() => {
+    function split(txt, regex, cls) {
+      const match = txt.match(regex);
+      console.log("regex:", regex, "match:", match);
+      const start = match.index;
+      const before = txt.substring(0, start);
+      const middle = match[0];
+      const after = txt.substring(start + middle.length);
+      const span = document.createElement('span');
+      span.className = cls;
+      span.innerText = middle;
+      return [ before, span, after ];
+    }
+
+    const pre = $('.tab-content pre')[0];
+    const code = $('.tab-content pre > code')[0];
+    const txt = code.innerText;
+    const [ prefix, jobUrl, suffix ] = split(txt, /Job running: .*/, "kfp-job-url");
+    const [ middle, success, tail ] = split(suffix, /finished in state: Succeeded/, "kfp-success-msg");
+    console.log("sizes:", txt.length, "total,", prefix.length, jobUrl.innerText.length, middle.length, success.innerText.length, tail.length);
+    code.innerText = "";
+    code.appendChild(document.createTextNode(prefix));
+    code.appendChild(jobUrl);
+    code.appendChild(document.createTextNode(middle));
+    code.appendChild(success);
+    code.appendChild(document.createTextNode(tail));
+
+    const pos = $('.kfp-job-url').position();
+    pre.scrollTo(pos.left - 300, 0);
+    scrollTo(0, innerHeight);
   });
   await wait(1);
+  selector = '.kfp-job-url';
+  await arrow('.kfp-job-url', -90, { x: 50 }, '.tab-content pre');
+  await arrow('.kfp-success-msg', 90, null, '.tab-content pre');
+  await wait(.5);
   await screenshot("logs-page");
 }
 
@@ -342,7 +390,7 @@ async function kfpMenu() {
   await wait(1);
 
   const kfp = dropdown + ' > ul > li:last-child > a';
-  await arrow(kfp, -30, { x: -50, y: -70 });
+  await arrow(kfp, -10, { x: 10, y: -10 });
   await page.hover(kfp);
   await screenshot('kfp-menu');
 
@@ -359,7 +407,7 @@ async function kfpPage(load) {
   await wait(.5);
   await screenshot('kfp-page');
   await page.click(link);
-  await wait(1);
+  await wait(1.5);
 }
 
 async function sequentialDetails() {
@@ -448,17 +496,17 @@ async function sequentialKFPJob() {
 await home();
 let row = await runCoin();
 await clickSuccessCircle(row);
-//await clickLogs('kubeflow_pipelines_coin_example');
 await clickLogs();
+// await clickLogs('kubeflow_pipelines_coin_example');
 await logsPage();
-
 //runDetails();
 
 await kfpMenu();
 await kfpPage();
-width = 850; height = 600;
+width = 850; height = 650;
 await resize();
 await screenshot('kfp-coin');
+
 //await kfpJobPage();
 
 // await sequentialDetails();
